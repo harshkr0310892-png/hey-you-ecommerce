@@ -3486,9 +3486,39 @@ export default function AdminDashboard() {
                     onChange={(e) => setAdminPercent(Number(e.target.value || 0))}
                     className="w-24"
                   />
+
                   <div className="text-sm text-muted-foreground">
                     <div>Total Admin: <span className="font-semibold">₹{Number(totalAdminEarnings || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
                     <div>Total Payout: <span className="font-semibold">₹{Number(totalSellerPayout || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
+                  </div>
+
+                  {/* Decorative graphic: small gradient card with chart/coins */}
+                  <div className="ml-4 hidden md:flex items-center" aria-hidden>
+                    <div className="w-40 h-20 rounded-lg bg-gradient-to-r from-amber-100 to-rose-50 shadow-md border border-border/30 p-3 flex items-center gap-3">
+                      <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+                        <defs>
+                          <linearGradient id="g1" x1="0" x2="1">
+                            <stop offset="0%" stopColor="#F59E0B" />
+                            <stop offset="100%" stopColor="#EF4444" />
+                          </linearGradient>
+                        </defs>
+                        <rect x="4" y="12" width="24" height="36" rx="4" fill="url(#g1)" />
+                        <rect x="36" y="8" width="24" height="44" rx="4" fill="#FDE68A" />
+                        <g fill="#fff" opacity="0.9">
+                          <circle cx="44" cy="26" r="3" />
+                          <path d="M40 34h8v2h-8z" />
+                        </g>
+                      </svg>
+                      <div className="flex-1 text-xs">
+                        <div className="font-medium text-amber-900">Sales Snapshot</div>
+                        <div className="text-muted-foreground">Total: <span className="font-semibold">₹{Number(totalGrossSales || 0).toLocaleString()}</span></div>
+                        <div className="mt-1">
+                          <svg width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none">
+                            <polyline fill="none" stroke="#ef4444" strokeWidth="3" points="0,14 20,10 40,6 60,8 80,4 100,2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
