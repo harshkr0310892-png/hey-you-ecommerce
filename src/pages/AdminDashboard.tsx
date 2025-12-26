@@ -505,6 +505,13 @@ export default function AdminDashboard() {
     },
   });
 
+  // Admin commission percentage (editable by admin in UI)
+  const [adminPercent, setAdminPercent] = useState<number>(5);
+
+  const totalGrossSales = (sellerProfits || []).reduce((s, r) => s + (r.gross_sales || 0), 0);
+  const totalAdminEarnings = (totalGrossSales * (adminPercent || 0)) / 100;
+  const totalSellerPayout = totalGrossSales - totalAdminEarnings;
+
   // Fetch delivery boys
   const { data: deliveryBoys, isLoading: deliveryBoysLoading } = useQuery({
     queryKey: ['admin-delivery-boys'],
@@ -3464,9 +3471,27 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-card rounded-xl border border-border/50 p-6">
-              <p className="text-sm text-muted-foreground">
-                This section shows seller-wise sales totals (excluding cancelled orders).
-              </p>
+              <div className="sm:flex sm:items-center sm:justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  This section shows seller-wise sales totals (excluding cancelled orders).
+                </p>
+
+                <div className="mt-3 sm:mt-0 flex items-center gap-4">
+                  <div className="text-sm">Admin commission</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={adminPercent}
+                    onChange={(e) => setAdminPercent(Number(e.target.value || 0))}
+                    className="w-24"
+                  />
+                  <div className="text-sm text-muted-foreground">
+                    <div>Total Admin: <span className="font-semibold">₹{Number(totalAdminEarnings || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
+                    <div>Total Payout: <span className="font-semibold">₹{Number(totalSellerPayout || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
+                  </div>
+                </div>
+              </div>
 
               {sellerProfitsLoading ? (
                 <div className="text-center py-12">
@@ -3480,24 +3505,33 @@ export default function AdminDashboard() {
                 <div className="overflow-x-auto mt-4">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left border-b border-border/50">
+                      <tr className="text-left border-b border-border/50 bg-muted/5">
                         <th className="py-2 pr-3">Rank</th>
                         <th className="py-2 pr-3">Seller</th>
                         <th className="py-2 pr-3">Email</th>
                         <th className="py-2 pr-3">Orders</th>
                         <th className="py-2 pr-3 text-right">Sales (₹)</th>
+                        <th className="py-2 pr-3 text-right">Admin Cut (₹)</th>
+                        <th className="py-2 pr-3 text-right">Seller Payout (₹)</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {sellerProfits.map((row, idx) => (
-                        <tr key={(row.seller_id || 'unknown') + '-' + idx} className="border-b border-border/30">
-                          <td className="py-2 pr-3 font-medium">{idx + 1}</td>
-                          <td className="py-2 pr-3">{row.seller_name || row.seller_id || 'Unknown'}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">{row.seller_email || '-'}</td>
-                          <td className="py-2 pr-3">{row.orders_count ?? 0}</td>
-                          <td className="py-2 pr-3 text-right font-semibold">₹{Number(row.gross_sales || 0).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-border/30">
+                      {sellerProfits.map((row, idx) => {
+                        const gross = Number(row.gross_sales || 0);
+                        const adminCut = (gross * (adminPercent || 0)) / 100;
+                        const payout = gross - adminCut;
+                        return (
+                          <tr key={(row.seller_id || 'unknown') + '-' + idx} className="hover:bg-muted/5">
+                            <td className="py-3 pr-3 font-medium align-top">{idx + 1}</td>
+                            <td className="py-3 pr-3 align-top">{row.seller_name || row.seller_id || 'Unknown'}</td>
+                            <td className="py-3 pr-3 text-muted-foreground align-top">{row.seller_email || '-'}</td>
+                            <td className="py-3 pr-3 align-top">{row.orders_count ?? 0}</td>
+                            <td className="py-3 pr-3 text-right align-top">₹{gross.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td className="py-3 pr-3 text-right align-top">₹{adminCut.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td className="py-3 pr-3 text-right font-semibold align-top">₹{payout.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
