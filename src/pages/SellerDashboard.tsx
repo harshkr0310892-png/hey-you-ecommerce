@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -338,6 +338,78 @@ export default function SellerDashboard() {
     },
     enabled: !!(seller?.id || sellerId),
   });
+
+  // Order filters
+  const [orderFilter, setOrderFilter] = useState<
+    | "all"
+    | "this_month"
+    | "by_month"
+    | "week_1"
+    | "week_2"
+    | "week_3"
+    | "week_4"
+    | "last_7"
+    | "custom"
+  >("all");
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0,7)); // YYYY-MM
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
+
+  const computeRange = (filterType: string) => {
+    const now = new Date();
+    if (!orders || orders.length === 0) return null;
+    if (filterType === "all") return null;
+    if (filterType === "this_month") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (filterType === "by_month") {
+      const [y, m] = (filterMonth || now.toISOString().slice(0,7)).split("-").map(Number);
+      const start = new Date(y, (m || now.getMonth()+1) - 1, 1);
+      const end = new Date(y, (m || now.getMonth()+1), 0, 23, 59, 59, 999);
+      return { start, end };
+    }
+    if (filterType.startsWith("week_")) {
+      const week = Number(filterType.split("_")[1].slice(0)) || 1;
+      // determine current month
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const startDay = (week - 1) * 7 + 1;
+      const start = new Date(year, month, startDay);
+      const end = new Date(year, month, startDay + 6, 23, 59, 59, 999);
+      // clamp to month
+      const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      if (end > monthEnd) end.setTime(monthEnd.getTime());
+      return { start, end };
+    }
+    if (filterType === "last_7") {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6);
+      start.setHours(0,0,0,0);
+      end.setHours(23,59,59,999);
+      return { start, end };
+    }
+    if (filterType === "custom") {
+      if (!customFrom || !customTo) return null;
+      const start = new Date(customFrom);
+      const end = new Date(customTo);
+      end.setHours(23,59,59,999);
+      return { start, end };
+    }
+    return null;
+  };
+
+  const filteredOrders = useMemo(() => {
+    if (!orders || orders.length === 0) return [] as Order[];
+    const range = computeRange(orderFilter);
+    if (!range) return orders;
+    return orders.filter(o => {
+      const d = new Date(o.created_at);
+      return d >= range.start && d <= range.end;
+    });
+  }, [orders, orderFilter, filterMonth, customFrom, customTo]);
 
   const { data: deliveryBoys } = useQuery({
     queryKey: ["seller-delivery-boys", seller?.id || sellerId],
@@ -1407,19 +1479,52 @@ export default function SellerDashboard() {
             </div>
           </TabsContent>
           <TabsContent value="orders" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-2xl font-bold">Your Orders</h2>
-              <Button variant="ghost" size="icon" onClick={() => refetchOrders()}>
-                <RefreshCw className="w-4 h-4" />
-              </Button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="font-display text-2xl font-bold">Your Orders</h2>
+                <Button variant="ghost" size="icon" onClick={() => refetchOrders()}>
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-muted-foreground">Filter:</label>
+                <select
+                  value={orderFilter}
+                  onChange={(e) => setOrderFilter(e.target.value as any)}
+                  className="px-2 py-1 border rounded-md bg-card text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="this_month">This Month</option>
+                  <option value="by_month">By Month</option>
+                  <option value="week_1">Week 1 (1-7)</option>
+                  <option value="week_2">Week 2 (8-14)</option>
+                  <option value="week_3">Week 3 (15-21)</option>
+                  <option value="week_4">Week 4 (22-31)</option>
+                  <option value="last_7">Last 7 Days</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+
+                {orderFilter === "by_month" && (
+                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-40" />
+                )}
+
+                {orderFilter === "custom" && (
+                  <div className="flex items-center gap-2">
+                    <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+                    <span className="text-sm">to</span>
+                    <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+                  </div>
+                )}
+              </div>
             </div>
             {ordersLoading ? (
               <div className="text-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
               </div>
-            ) : orders && orders.length > 0 ? (
+            ) : filteredOrders && filteredOrders.length > 0 ? (
               <div className="space-y-4">
-                {orders.map((order) => {
+                {filteredOrders.map((order) => {
                   const items = orderItems[order.id] || [];
                   return (
                     <div key={order.id} className="p-4 bg-card rounded-xl border border-border/50">
