@@ -332,5 +332,7 @@
 .text-foreground\/80 {
     color: hsl(0 0% 0%);
 }
-
+.border-primary {
+    border-color: rgb(0 0 0);
+}
 @import './styles/action-buttons.css';
